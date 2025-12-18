@@ -21,6 +21,7 @@ class _AddMenuPageState extends State<AddMenuPage> {
 
   final List<String> _categories = [
     "Nasi Goreng",
+    "Nasi Gila",
     "Kwetiaw",
     "Mie",
     "Spicy Tofu",
@@ -183,7 +184,7 @@ class _AddMenuPageState extends State<AddMenuPage> {
               const Text("Tipe Menu", style: TextStyle(color: Colors.grey)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedCategory,
+                initialValue: _selectedCategory,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),

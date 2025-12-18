@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:intl/intl.dart';
 
-// Model Data Menu (Tetap sama)
+// --- MODEL DATA ---
 class MenuItem {
   final String name;
   final String category;
@@ -30,84 +31,117 @@ class MenuItem {
   );
 }
 
+class Order {
+  final String id;
+  final List<Map<String, dynamic>> items;
+  final int totalPrice;
+  final String date; // Format: yyyy-MM-dd HH:mm
+  bool isCompleted;
+
+  Order({
+    required this.id,
+    required this.items,
+    required this.totalPrice,
+    required this.date,
+    this.isCompleted = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'items': items,
+    'totalPrice': totalPrice,
+    'date': date,
+    'isCompleted': isCompleted,
+  };
+
+  factory Order.fromJson(Map<String, dynamic> json) => Order(
+    id: json['id'],
+    items: List<Map<String, dynamic>>.from(json['items']),
+    totalPrice: json['totalPrice'],
+    date: json['date'],
+    isCompleted: json['isCompleted'],
+  );
+}
+
+// --- SERVICE ---
 class MenuService {
   static const String _keyMenus = 'menus_data';
+  static const String _keyOrders = 'orders_data';
 
-  // DATA AWAL DIPERBARUI: Sesuaikan dengan nama file di folder assets/images/
+  // Data Awal (Seed Data)
   final List<MenuItem> _initialMenus = [
-    // Nasi Goreng
     MenuItem(
       name: "Nasi Goreng Ori",
       category: "Nasi Goreng",
       price: 15000,
-      imagePath: "assets/images/Nasi-Goreng-original.jpg", //
+      imagePath: "assets/images/Nasi-Goreng-original.jpg",
     ),
     MenuItem(
       name: "Nasi Goreng Ayam",
       category: "Nasi Goreng",
       price: 18000,
-      imagePath: "assets/images/Nasi-Goreng-ayam.jpg", //
+      imagePath: "assets/images/Nasi-Goreng-ayam.jpg",
     ),
     MenuItem(
       name: "Nasi Goreng Cikur",
       category: "Nasi Goreng",
       price: 15000,
-      imagePath: "assets/images/Nasi-Goreng-cikur.jpg", //
+      imagePath: "assets/images/Nasi-Goreng-cikur.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Goreng Kulit",
+      category: "Nasi Goreng",
+      price: 17000,
+      imagePath: "assets/images/nasi-goreng-kulit.jpg",
     ),
     MenuItem(
       name: "Nasi Goreng Rendang",
       category: "Nasi Goreng",
       price: 17000,
-      imagePath: "assets/images/Nasi-Goreng-rendang.jpg", //
+      imagePath: "assets/images/Nasi-Goreng-rendang.jpg",
     ),
-
-    // Kwetiaw
     MenuItem(
       name: "Kwetiaw Goreng",
       category: "Kwetiaw",
       price: 17000,
-      imagePath: "assets/images/kwetiau-goreng.jpg", //
+      imagePath: "assets/images/kwetiau-goreng.jpg",
     ),
     MenuItem(
       name: "Kwetiaw Kuah",
       category: "Kwetiaw",
       price: 17000,
-      imagePath: "assets/images/kwetiau-kuah.jpeg", //
+      imagePath: "assets/images/kwetiau-kuah.jpeg",
     ),
-
-    // Mie
     MenuItem(
       name: "Mie Goreng",
       category: "Mie",
       price: 15000,
-      imagePath: "assets/images/mie-goreng.jpeg", //
+      imagePath: "assets/images/mie-goreng.jpeg",
     ),
     MenuItem(
       name: "Mie Tek Tek",
       category: "Mie",
       price: 15000,
-      imagePath: "assets/images/mie-tektek.jpeg", //
+      imagePath: "assets/images/mie-tektek.jpeg",
     ),
-
-    // Spicy Tofu
     MenuItem(
       name: "Spicy Tofu Original",
       category: "Spicy Tofu",
       price: 12000,
-      imagePath: "assets/images/spicy-tofu-ori.jpg", //
+      imagePath: "assets/images/spicy-tofu-ori.jpg",
     ),
     MenuItem(
       name: "Spicy Tofu Dabu",
       category: "Spicy Tofu",
       price: 15000,
-      imagePath: "assets/images/spicy-tofu-dabu.jpg", //
+      imagePath: "assets/images/spicy-tofu-dabu.jpg",
     ),
   ];
 
+  // --- MENU METHODS ---
   Future<List<MenuItem>> getMenus() async {
     final prefs = await SharedPreferences.getInstance();
     final String? menusString = prefs.getString(_keyMenus);
-
     if (menusString != null) {
       List<dynamic> jsonList = jsonDecode(menusString);
       return jsonList.map((json) => MenuItem.fromJson(json)).toList();
@@ -148,10 +182,104 @@ class MenuService {
           item.category == oldItem.category &&
           item.price == oldItem.price,
     );
-
     if (index != -1) {
       currentMenus[index] = newItem;
       await saveMenus(currentMenus);
     }
+  }
+
+  // --- ORDER METHODS ---
+  Future<List<Order>> getOrders() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? ordersString = prefs.getString(_keyOrders);
+
+    if (ordersString != null) {
+      List<dynamic> jsonList = jsonDecode(ordersString);
+      return jsonList.map((json) => Order.fromJson(json)).toList();
+    }
+    return [];
+  }
+
+  Future<void> addOrder(Order order) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    // Ambil raw list (tanpa manipulasi order)
+    final String? ordersString = prefs.getString(_keyOrders);
+    List<Order> currentOrders = [];
+    if (ordersString != null) {
+      List<dynamic> jsonList = jsonDecode(ordersString);
+      currentOrders = jsonList.map((json) => Order.fromJson(json)).toList();
+    }
+
+    currentOrders.add(order); // Tambahkan ke paling belakang (Bawah)
+
+    String jsonString = jsonEncode(
+      currentOrders.map((o) => o.toJson()).toList(),
+    );
+    await prefs.setString(_keyOrders, jsonString);
+  }
+
+  Future<void> completeOrder(String orderId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? ordersString = prefs.getString(_keyOrders);
+    if (ordersString == null) return;
+
+    List<Order> currentOrders = (jsonDecode(ordersString) as List)
+        .map((json) => Order.fromJson(json))
+        .toList();
+    int index = currentOrders.indexWhere((o) => o.id == orderId);
+
+    if (index != -1) {
+      currentOrders[index].isCompleted = true;
+      await prefs.setString(
+        _keyOrders,
+        jsonEncode(currentOrders.map((o) => o.toJson()).toList()),
+      );
+    }
+  }
+
+  // --- FUNGSI HITUNG PENDAPATAN ---
+  Future<Map<String, int>> getIncomeStats() async {
+    List<Order> allOrders = await getOrders();
+
+    int todayIncome = 0;
+    int weeklyIncome = 0;
+
+    DateTime now = DateTime.now();
+    // Cari tanggal hari Senin minggu ini (Start of Week)
+    DateTime startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+    // Reset jam ke 00:00:00
+    startOfWeek = DateTime(
+      startOfWeek.year,
+      startOfWeek.month,
+      startOfWeek.day,
+    );
+    DateTime todayStart = DateTime(now.year, now.month, now.day);
+
+    DateFormat formatter = DateFormat('yyyy-MM-dd HH:mm');
+
+    for (var order in allOrders) {
+      try {
+        DateTime orderDate = formatter.parse(order.date);
+
+        // Cek Hari Ini
+        if (orderDate.year == now.year &&
+            orderDate.month == now.month &&
+            orderDate.day == now.day) {
+          todayIncome += order.totalPrice;
+        }
+
+        // Cek Minggu Ini (Dari Senin - Sekarang)
+        // Jika orderDate >= startOfWeek
+        if (orderDate.isAfter(startOfWeek) ||
+            orderDate.isAtSameMomentAs(startOfWeek)) {
+          weeklyIncome += order.totalPrice;
+        }
+      } catch (e) {
+        print("Error parsing date: $e");
+      }
+    }
+
+    return {'today': todayIncome, 'week': weeklyIncome};
   }
 }
