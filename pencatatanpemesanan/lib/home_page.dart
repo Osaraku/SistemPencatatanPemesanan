@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'widgets/custom_navbar.dart';
 import 'menu_page.dart';
 import 'services/menu_service.dart';
-import 'add_order_page.dart'; // Import halaman tambah pesanan
-import 'income_page.dart'; // Import halaman pendapatan
+import 'add_order_page.dart';
+import 'income_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,13 +17,12 @@ class _HomePageState extends State<HomePage> {
   int _tabIndex = 0; // 0 = Aktif, 1 = Selesai
   int _bottomNavIndex = 0;
 
-  // Service
   final MenuService _menuService = MenuService();
   List<Order> _allOrders = [];
   bool _isLoading = true;
 
   final List<Widget> _pages = [
-    const SizedBox(), // Placeholder untuk index 0
+    const SizedBox(),
     const IncomePage(),
     const MenuPage(),
   ];
@@ -34,7 +33,6 @@ class _HomePageState extends State<HomePage> {
     _loadOrders();
   }
 
-  // Load Data Order
   Future<void> _loadOrders() async {
     setState(() => _isLoading = true);
     List<Order> orders = await _menuService.getOrders();
@@ -44,16 +42,14 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  // Mark Order as Complete
   void _markAsDone(String orderId) async {
     await _menuService.completeOrder(orderId);
-    _loadOrders(); // Refresh list
+    _loadOrders();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Pesanan dipindahkan ke Selesai")),
     );
   }
 
-  // Helper menampilkan gambar
   Widget _buildImage(String path) {
     if (path.startsWith('assets/')) {
       return Image.asset(
@@ -75,11 +71,6 @@ class _HomePageState extends State<HomePage> {
     Widget bodyContent;
 
     if (_bottomNavIndex == 0) {
-      // --- LOGIC HALAMAN UTAMA (LIST PESANAN) ---
-
-      // Filter list berdasarkan tab (Aktif / Selesai)
-      // Tab 0 (Aktif) = cari yang isCompleted == false
-      // Tab 1 (Selesai) = cari yang isCompleted == true
       List<Order> filteredOrders = _allOrders.where((order) {
         return _tabIndex == 0 ? !order.isCompleted : order.isCompleted;
       }).toList();
@@ -99,27 +90,60 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Tab Switch (Aktif / Selesai)
+          // --- TAB SWITCH DENGAN ANIMASI SLIDING ---
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Container(
-              padding: const EdgeInsets.all(4),
+              height: 50,
               decoration: BoxDecoration(
                 color: Colors.grey[200],
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(15),
               ),
-              child: Row(
-                children: [
-                  _buildTabItem("Aktif", 0),
-                  _buildTabItem("Selesai", 1),
-                ],
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  double tabWidth = (constraints.maxWidth - 8) / 2;
+                  return Stack(
+                    children: [
+                      // Latar Belakang Putih yang Sliding
+                      AnimatedAlign(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        alignment: _tabIndex == 0
+                            ? Alignment.centerLeft
+                            : Alignment.centerRight,
+                        child: Container(
+                          width: tabWidth,
+                          height: 42,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Label Tombol
+                      Row(
+                        children: [
+                          _buildTabLabel("Aktif", 0),
+                          _buildTabLabel("Selesai", 1),
+                        ],
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
 
           const SizedBox(height: 10),
 
-          // LIST DATA ORDER
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -136,7 +160,35 @@ class _HomePageState extends State<HomePage> {
                     padding: const EdgeInsets.all(20),
                     itemCount: filteredOrders.length,
                     itemBuilder: (context, index) {
-                      return _buildOrderCard(filteredOrders[index]);
+                      final order = filteredOrders[index];
+
+                      // Slide delete hanya aktif untuk pesanan yang belum selesai (Tab Aktif)
+                      if (_tabIndex == 0) {
+                        return Dismissible(
+                          key: Key(order.id),
+                          direction:
+                              DismissDirection.startToEnd, // Geser ke kanan
+                          confirmDismiss: (direction) =>
+                              _confirmDeleteOrder(order),
+                          onDismissed: (direction) => _deleteOrder(order.id),
+                          background: Container(
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 20),
+                            margin: const EdgeInsets.only(bottom: 15),
+                            decoration: BoxDecoration(
+                              color: Colors.red,
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.white,
+                              size: 30,
+                            ),
+                          ),
+                          child: _buildOrderCard(order),
+                        );
+                      }
+                      return _buildOrderCard(order);
                     },
                   ),
           ),
@@ -150,37 +202,59 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Colors.white,
       body: SafeArea(child: bodyContent),
 
-      // FAB HANYA MUNCUL DI TAB "PESANAN" (INDEX 0)
       floatingActionButton: _bottomNavIndex == 0
-          ? Padding(
-              padding: const EdgeInsets.only(bottom: 10, right: 10),
-              child: SizedBox(
-                height: 50,
-                width: 170,
-                child: FloatingActionButton.extended(
-                  backgroundColor: const Color(0xFF4A37C6),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+          ? Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 5),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF4A37C6), Color(0xFF6B5AE0)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(30),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4A37C6).withOpacity(0.4),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
                   ),
-                  onPressed: () async {
-                    // Buka halaman Tambah Pesanan
+                ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () async {
                     bool? result = await Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => const AddOrderPage(),
                       ),
                     );
-                    // Jika sukses submit, refresh list
                     if (result == true) {
                       _loadOrders();
                     }
                   },
-                  icon: const Icon(Icons.add, color: Colors.white),
-                  label: const Text(
-                    "Tambah\nPesanan",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                  borderRadius: BorderRadius.circular(30),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.add_rounded, color: Colors.white, size: 28),
+                        SizedBox(width: 10),
+                        Text(
+                          "Tambah Pesanan",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -195,11 +269,31 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Widget Label Tab (Hanya Text)
+  Widget _buildTabLabel(String title, int index) {
+    bool isActive = _tabIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tabIndex = index),
+        child: Container(
+          color: Colors.transparent, // Agar area klik luas
+          alignment: Alignment.center,
+          child: AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 200),
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: isActive ? Colors.black : Colors.grey[600],
+            ),
+            child: Text(title),
+          ),
+        ),
+      ),
+    );
+  }
+
   // WIDGET KARTU PESANAN
   Widget _buildOrderCard(Order order) {
-    // Karena satu "Order" sekarang bisa berisi banyak item yang berbeda-beda opsinya,
-    // Kita akan menampilkan list itemnya di dalam kartu tersebut.
-
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       padding: const EdgeInsets.all(16),
@@ -217,7 +311,6 @@ class _HomePageState extends State<HomePage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Order (ID & Tanggal)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -232,18 +325,13 @@ class _HomePageState extends State<HomePage> {
             ],
           ),
           const Divider(),
-
-          // LOOPING SEMUA ITEM DI DALAM ORDER INI
           ...order.items.map((item) {
-            // Ambil opsi (gunakan map kosong jika null agar aman)
             final options = item['options'] as Map<String, dynamic>? ?? {};
-
             return Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Gambar Kecil
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: SizedBox(
@@ -253,12 +341,10 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  // Detail Item & Opsi
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Nama Menu
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -272,7 +358,6 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                            // Tipe Makan (Makan di tempat/Bungkus) tampil di pojok kanan
                             if (options['type'] != null)
                               Text(
                                 options['type'],
@@ -283,10 +368,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                           ],
                         ),
-
                         const SizedBox(height: 4),
-
-                        // OPSI-OPSI DETAIL
                         if (options.isNotEmpty) ...[
                           Text(
                             "Kepedasan: ${options['level'] ?? '-'}",
@@ -304,9 +386,7 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                         ],
-
                         const SizedBox(height: 4),
-                        // Qty & Harga
                         Text(
                           "${item['qty']}x  @ Rp ${item['price']}",
                           style: TextStyle(
@@ -321,10 +401,7 @@ class _HomePageState extends State<HomePage> {
               ),
             );
           }).toList(),
-
           const Divider(),
-
-          // Footer Total Harga & Tombol Selesai
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -335,8 +412,7 @@ class _HomePageState extends State<HomePage> {
                   fontSize: 16,
                 ),
               ),
-
-              if (_tabIndex == 0) // Tombol Selesai hanya jika di tab Aktif
+              if (_tabIndex == 0)
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4A37C6),
@@ -371,38 +447,45 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Widget Tab Switch (Aktif/Selesai) - Tetap sama
-  Widget _buildTabItem(String title, int index) {
-    bool isActive = _tabIndex == index;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => _tabIndex = index),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isActive ? Colors.white : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: isActive
-                ? [
-                    const BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ]
-                : [],
+  Future<bool?> _confirmDeleteOrder(Order order) {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Batalkan Pesanan"),
+        content: Text(
+          "Yakin ingin membatalkan pesanan #${order.id.substring(order.id.length - 4)}?",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Kembali", style: TextStyle(color: Colors.grey)),
           ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: isActive ? Colors.black : Colors.grey[600],
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              "Hapus Pesanan",
+              style: TextStyle(color: Colors.white),
             ),
           ),
-        ),
+        ],
       ),
     );
+  }
+
+  void _deleteOrder(String orderId) async {
+    await _menuService.deleteOrder(orderId);
+    _loadOrders(); // Refresh list setelah hapus
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pesanan berhasil dibatalkan")),
+      );
+    }
   }
 }

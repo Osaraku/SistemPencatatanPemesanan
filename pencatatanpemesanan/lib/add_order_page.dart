@@ -116,8 +116,9 @@ class _AddOrderPageState extends State<AddOrderPage> {
     // Kelompokkan menu untuk tampilan
     Map<String, List<MenuItem>> groupedMenus = {};
     for (var menu in _allMenus) {
-      if (!groupedMenus.containsKey(menu.category))
+      if (!groupedMenus.containsKey(menu.category)) {
         groupedMenus[menu.category] = [];
+      }
       groupedMenus[menu.category]!.add(menu);
     }
 

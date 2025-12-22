@@ -95,8 +95,8 @@ class _MenuPageState extends State<MenuPage> {
                       Expanded(
                         child: ListView(
                           padding: const EdgeInsets.only(
-                            bottom: 80,
-                          ), // Space for FAB
+                            bottom: 100,
+                          ), // Beri ruang lebih untuk tombol
                           children: groupedMenus.entries.map((entry) {
                             return _buildCategorySection(
                               entry.key,
@@ -108,45 +108,126 @@ class _MenuPageState extends State<MenuPage> {
                     ],
                   ),
 
-                  // FAB Floating (Tombol Tambah Menu) seperti desain
+                  // --- TOMBOL AKSI PROFESIONAL ---
                   Positioned(
                     bottom: 20,
                     right: 20,
-                    child: SizedBox(
-                      height: 50,
-                      child: FloatingActionButton.extended(
-                        backgroundColor: const Color(0xFF4A37C6),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildActionButton(
+                          icon: Icons.category_rounded,
+                          label: "Kategori",
+                          onTap: _showAddCategoryDialog,
                         ),
-                        onPressed: () async {
-                          // Navigasi ke Halaman Tambah Menu
-                          bool? isAdded = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const AddMenuPage(),
-                            ),
-                          );
-                          // Jika kembali membawa data 'true', refresh list
-                          if (isAdded == true) {
-                            _loadData();
-                          }
-                        },
-                        icon: const Icon(Icons.add, color: Colors.white),
-                        label: const Text(
-                          "Tambah\nMenu",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            height: 1.1,
-                          ),
+                        const SizedBox(width: 12),
+                        _buildActionButton(
+                          icon: Icons.add_rounded,
+                          label: "Tambah Menu", // Teks diubah sesuai permintaan
+                          onTap: () async {
+                            bool? isAdded = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const AddMenuPage(),
+                              ),
+                            );
+                            if (isAdded == true) _loadData();
+                          },
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A37C6), Color(0xFF6B5AE0)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(
+          30,
+        ), // Ukuran radius sama dengan Home
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF4A37C6).withOpacity(0.4),
+            blurRadius: 15,
+            offset: const Offset(0, 8), // Shadow lebih profesional
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(30),
+          child: Padding(
+            // Padding disesuaikan agar ukuran tombol sama besar dengan Home Page
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.white,
+                  size: 28,
+                ), // Ukuran ikon disamakan
+                const SizedBox(width: 10),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16, // Ukuran font disamakan
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddCategoryDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Tambah Kategori Baru"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: "Nama Kategori (ex: Snack)",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Batal"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (controller.text.isNotEmpty) {
+                await _menuService.addCategory(controller.text);
+                Navigator.pop(context);
+                _loadData(); // Refresh UI
+              }
+            },
+            child: const Text("Simpan"),
+          ),
+        ],
+      ),
     );
   }
 

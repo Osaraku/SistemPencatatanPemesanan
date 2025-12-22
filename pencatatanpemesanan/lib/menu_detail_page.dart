@@ -14,21 +14,21 @@ class MenuDetailPage extends StatefulWidget {
 class _MenuDetailPageState extends State<MenuDetailPage> {
   // State untuk Opsi
   String _levelPedas = "Tidak Pedas";
-  String _jenisTelur = "Ceplok";
+  String _jenisTelur = "Tanpa Telur";
   String _tipePesanan = "Makan di Tempat";
-  String _tipePembayaran = "QRIS";
+  String _tipePembayaran = "Tunai";
   int _qty = 1;
 
   // Pilihan Opsi
   final List<String> _listPedas = [
     "Tidak Pedas",
+    "Sedikit",
     "Sedang",
-    "Pedas",
     "Sangat Pedas",
   ];
-  final List<String> _listTelur = ["Ceplok", "Dadar", "Rebus", "Tanpa Telur"];
+  final List<String> _listTelur = ["Tanpa Telur", "Ceplok", "Dadar", "Rebus"];
   final List<String> _listTipe = ["Makan di Tempat", "Bungkus"];
-  final List<String> _listBayar = ["QRIS", "Tunai"];
+  final List<String> _listBayar = ["Tunai", "QRIS"];
 
   // Helper Gambar
   Widget _buildImage(String path) {
@@ -178,7 +178,7 @@ class _MenuDetailPageState extends State<MenuDetailPage> {
                           children: [
                             _buildSectionTitle("Tipe Pesanan"),
                             DropdownButtonFormField<String>(
-                              value: _tipePesanan,
+                              initialValue: _tipePesanan,
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,
@@ -212,7 +212,7 @@ class _MenuDetailPageState extends State<MenuDetailPage> {
                           children: [
                             _buildSectionTitle("Pembayaran"),
                             DropdownButtonFormField<String>(
-                              value: _tipePembayaran,
+                              initialValue: _tipePembayaran,
                               decoration: InputDecoration(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 10,

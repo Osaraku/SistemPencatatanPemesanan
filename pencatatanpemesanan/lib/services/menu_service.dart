@@ -68,6 +68,41 @@ class MenuService {
   static const String _keyMenus = 'menus_data';
   static const String _keyOrders = 'orders_data';
 
+  // Tambahkan di dalam class MenuService
+  static const String _keyCategories = 'categories_data';
+  final List<String> _initialCategories = [
+    "Nasi Goreng",
+    "Nasi Gila",
+    "Kwetiaw",
+    "Mie",
+    "Spicy Tofu",
+    "Minuman",
+  ];
+
+  Future<List<String>> getCategories() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? catsString = prefs.getString(_keyCategories);
+    if (catsString != null) {
+      return List<String>.from(jsonDecode(catsString));
+    } else {
+      await saveCategories(_initialCategories);
+      return _initialCategories;
+    }
+  }
+
+  Future<void> saveCategories(List<String> categories) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyCategories, jsonEncode(categories));
+  }
+
+  Future<void> addCategory(String category) async {
+    List<String> current = await getCategories();
+    if (!current.contains(category)) {
+      current.add(category);
+      await saveCategories(current);
+    }
+  }
+
   // Data Awal (Seed Data)
   final List<MenuItem> _initialMenus = [
     MenuItem(
@@ -99,6 +134,42 @@ class MenuService {
       category: "Nasi Goreng",
       price: 17000,
       imagePath: "assets/images/Nasi-Goreng-rendang.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Gila Ori",
+      category: "Nasi Gila",
+      price: 15000,
+      imagePath: "assets/images/nasi-gila-ori.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Gila Ayam",
+      category: "Nasi Gila",
+      price: 18000,
+      imagePath: "assets/images/nasi-gila-ayam.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Gila Dabu Dabu",
+      category: "Nasi Gila",
+      price: 17000,
+      imagePath: "assets/images/nasi-gila-dabudabu.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Gila Telur",
+      category: "Nasi Gila",
+      price: 17000,
+      imagePath: "assets/images/nasi-gila-telur.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Gila Telur Puyuh",
+      category: "Nasi Gila",
+      price: 17000,
+      imagePath: "assets/images/nasi-gila-telurpuyuh.jpg",
+    ),
+    MenuItem(
+      name: "Nasi Gila Keju",
+      category: "Nasi Gila",
+      price: 17000,
+      imagePath: "assets/images/nasi-gila-keju.jpg",
     ),
     MenuItem(
       name: "Kwetiaw Goreng",
@@ -211,12 +282,30 @@ class MenuService {
       currentOrders = jsonList.map((json) => Order.fromJson(json)).toList();
     }
 
-    currentOrders.add(order); // Tambahkan ke paling belakang (Bawah)
+    currentOrders.add(order);
 
     String jsonString = jsonEncode(
       currentOrders.map((o) => o.toJson()).toList(),
     );
     await prefs.setString(_keyOrders, jsonString);
+  }
+
+  Future<void> deleteOrder(String orderId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? ordersString = prefs.getString(_keyOrders);
+    if (ordersString == null) return;
+
+    List<Order> currentOrders = (jsonDecode(ordersString) as List)
+        .map((json) => Order.fromJson(json))
+        .toList();
+
+    // Hapus pesanan berdasarkan ID
+    currentOrders.removeWhere((o) => o.id == orderId);
+
+    await prefs.setString(
+      _keyOrders,
+      jsonEncode(currentOrders.map((o) => o.toJson()).toList()),
+    );
   }
 
   Future<void> completeOrder(String orderId) async {

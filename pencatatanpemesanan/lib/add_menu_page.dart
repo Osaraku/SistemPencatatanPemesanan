@@ -19,27 +19,28 @@ class _AddMenuPageState extends State<AddMenuPage> {
   String _selectedCategory = "Nasi Goreng";
   File? _selectedImage;
 
-  final List<String> _categories = [
-    "Nasi Goreng",
-    "Nasi Gila",
-    "Kwetiaw",
-    "Mie",
-    "Spicy Tofu",
-    "Minuman",
-  ];
+  List<String> _categories = [];
 
   @override
   void initState() {
     super.initState();
-    // BARU: Jika sedang mode edit, isi form dengan data lama
+    _loadCategories(); // Panggil fungsi load kategori
     if (widget.menuToEdit != null) {
       _nameController.text = widget.menuToEdit!.name;
       _priceController.text = widget.menuToEdit!.price.toString();
-      // Pastikan kategori yang ada di data lama tersedia di list kategori kita
-      if (_categories.contains(widget.menuToEdit!.category)) {
-        _selectedCategory = widget.menuToEdit!.category;
-      }
     }
+  }
+
+  Future<void> _loadCategories() async {
+    List<String> cats = await MenuService().getCategories();
+    setState(() {
+      _categories = cats;
+      if (widget.menuToEdit != null) {
+        _selectedCategory = widget.menuToEdit!.category;
+      } else {
+        _selectedCategory = cats.first;
+      }
+    });
   }
 
   Future<void> _pickImage() async {
